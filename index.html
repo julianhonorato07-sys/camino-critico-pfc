@@ -1,0 +1,882 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Camino crítico PFC-2026</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Identidad Grupo Comar sobre fondo claro. Carbon para estructura, rojo con moderación, gris F4F4F3 para paneles */
+:root{
+  --bg:#ffffff;
+  --panel:#f4f4f3;
+  --card:#ffffff;
+  --fg:#141414;
+  --muted:rgba(20,20,20,.64);
+  --line:rgba(20,20,20,.22);
+  --line-soft:rgba(20,20,20,.12);
+  --ink:#141414;
+  --accent:#d93315;
+  --accent-press:#b62a10;
+  --accent-soft:#fbe9e4;
+  --ok:#1a7f4e;
+  --ok-soft:#e2f1e9;
+  --warn:#a36604;
+  --warn-soft:#faefd8;
+  --pend:rgba(20,20,20,.45);
+  --pend-soft:#ececea;
+  --down:#0b7d84;
+  --down-soft:#e0f1f2;
+  --font-d:'Instrument Sans',system-ui,sans-serif;
+  --font-m:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+body{
+  background:var(--bg); color:var(--fg); font-family:var(--font-d);
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:0 48px;
+  font-size:14.5px; line-height:1.45;
+}
+.wrap{max-width:1080px; margin:0 auto}
+
+/* Cabecera carbon */
+header.top{
+  background:var(--ink); color:#fff; border-radius:14px; margin-top:18px;
+  padding:22px 24px 20px; display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end; justify-content:space-between;
+}
+.kicker{font-family:var(--font-m); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); font-weight:600; margin:0 0 6px}
+h1{font-size:clamp(21px,3.4vw,28px); font-weight:700; letter-spacing:-.02em; margin:0; color:#fff; text-wrap:balance}
+.sub{color:rgba(255,255,255,.64); margin:6px 0 0; max-width:66ch; font-size:13.5px}
+.globalprog{min-width:220px}
+.globalprog .nums{display:flex; justify-content:space-between; font-family:var(--font-m); font-size:12px; color:rgba(255,255,255,.64); margin-bottom:6px}
+.bar{height:7px; border-radius:4px; background:rgba(255,255,255,.18); overflow:hidden; display:flex}
+.bar i{display:block; height:100%}
+.bar .bok{background:#3dbd7d} .bar .bwip{background:#e8b84a}
+
+/* Solapas */
+nav.tabs{display:flex; gap:4px; border-bottom:1px solid var(--line-soft); margin:20px 0 16px}
+nav.tabs button{
+  background:none; border:none; font-family:inherit; color:var(--muted); font-size:14.5px; font-weight:600;
+  padding:9px 14px 11px; cursor:pointer; border-bottom:2.5px solid transparent; margin-bottom:-1px;
+}
+nav.tabs button.active{color:var(--fg); border-bottom-color:var(--accent)}
+nav.tabs button:hover{color:var(--fg)}
+
+#banner{display:none; background:var(--warn-soft); color:var(--warn); border:1px solid var(--warn); border-radius:8px; padding:8px 12px; font-size:13px; margin-bottom:12px}
+#banner.show{display:block}
+
+/* Flujo */
+.flowbox{background:var(--panel); border:1px solid var(--line-soft); border-radius:12px; padding:16px 16px 12px; margin-bottom:14px}
+.flowbox h2{margin:0 0 10px; font-size:11px; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); font-weight:700}
+.flowscroll{overflow-x:auto; padding-bottom:4px}
+.flow{display:flex; align-items:stretch; min-width:720px}
+.fnode{flex:1; min-width:110px; border:1.5px solid var(--line); border-radius:10px; background:var(--card); padding:9px 10px 8px; cursor:pointer; text-align:left; font-family:inherit; color:inherit; font-size:13px; transition:border-color .15s}
+.fnode+.farrow{flex:0 0 22px; display:flex; align-items:center; justify-content:center; color:var(--muted); font-family:var(--font-m)}
+.fnode .cp{font-family:var(--font-m); font-size:11px; font-weight:600; color:var(--muted)}
+.fnode .fn{font-weight:700; margin:1px 0 6px; line-height:1.2}
+.fnode .mini{height:5px; border-radius:3px; background:var(--pend-soft); overflow:hidden; display:flex; margin-bottom:4px}
+.fnode .mini i{height:100%}
+.fnode .cnt{font-family:var(--font-m); font-size:11px; color:var(--muted)}
+.fnode:hover{border-color:var(--ink)}
+.fnode.active{border-color:var(--ink); background:var(--panel); box-shadow:inset 0 2.5px 0 var(--accent)}
+.branches{display:flex; flex-wrap:wrap; gap:10px; margin-top:12px}
+.bnode{flex:1; min-width:230px; display:flex; gap:10px; align-items:center; border:1.5px dashed var(--line); border-radius:10px; background:var(--card); padding:8px 12px; cursor:pointer; font-family:inherit; color:inherit; font-size:13px; text-align:left}
+.bnode:hover{border-color:var(--ink)} .bnode.active{border-color:var(--ink); background:var(--panel); box-shadow:inset 2.5px 0 0 var(--accent)}
+.bnode .fn{font-weight:700}
+.bnode .tagp{font-family:var(--font-m); font-size:11px; color:var(--accent); font-weight:600}
+.bnode .joins{font-size:11.5px; color:var(--muted)}
+.bnode .cnt{margin-left:auto; font-family:var(--font-m); font-size:11px; color:var(--muted); white-space:nowrap}
+
+/* Filtros */
+.filters{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+.filters select,.filters input[type=search]{
+  background:var(--card); color:var(--fg); border:1px solid var(--line); border-radius:8px;
+  padding:7px 10px; font-family:inherit; font-size:13.5px;
+}
+.filters input[type=search]{flex:1; min-width:150px}
+.filters .clear{background:none; border:none; color:var(--accent); font-family:inherit; font-size:13px; cursor:pointer; padding:7px 4px; font-weight:600}
+.filters .clear:hover{color:var(--accent-press)}
+.count{font-family:var(--font-m); font-size:12px; color:var(--muted); margin-left:auto}
+
+/* Barra de foco */
+#focusbar{position:sticky; top:env(safe-area-inset-top,0px); z-index:5; background:var(--ink); color:#fff; border-radius:10px; padding:10px 14px; margin-bottom:12px; display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; font-size:13.5px}
+#focusbar b{font-family:var(--font-m); color:#fff}
+#focusbar .leg{display:inline-flex; align-items:center; gap:5px; color:rgba(255,255,255,.8)}
+#focusbar .dot{width:9px; height:9px; border-radius:2px; display:inline-block}
+#focusbar .fbbtns{margin-left:auto; display:flex; gap:8px}
+#focusbar button{background:#fff; color:var(--ink); border:none; border-radius:7px; padding:5px 12px; font-weight:700; font-family:inherit; font-size:13px; cursor:pointer}
+#focusbar button.red{background:var(--accent); color:#fff}
+
+/* Grupos y filas */
+.ghead{display:flex; flex-wrap:wrap; align-items:baseline; gap:10px; margin:22px 2px 8px}
+.ghead .gcp{font-family:var(--font-m); font-size:12px; font-weight:600; color:var(--fg); background:var(--pend-soft); border-radius:5px; padding:2px 7px}
+.ghead h3{margin:0; font-size:16px; font-weight:700; letter-spacing:-.01em}
+.ghead .gd{color:var(--muted); font-size:13px}
+.ghead .gp{margin-left:auto; font-family:var(--font-m); font-size:12px; color:var(--muted)}
+.row{background:var(--card); border:1px solid var(--line-soft); border-left:4px solid var(--pend); border-radius:10px; margin-bottom:8px; transition:opacity .15s, border-color .15s}
+.row.e-en_curso{border-left-color:#e3a008}
+.row.e-cerrada{border-left-color:var(--ok)}
+.row.sel{border-color:var(--accent); box-shadow:0 0 0 2px var(--accent)}
+.row.up{border-color:#e3a008}
+.row.down{border-color:var(--down)}
+.rhead{display:flex; align-items:center; gap:10px; padding:10px 12px; cursor:pointer; flex-wrap:wrap}
+.rid{font-family:var(--font-m); font-size:12px; font-weight:600; background:var(--pend-soft); border-radius:5px; padding:3px 7px; flex:0 0 auto}
+.rid:hover{background:var(--accent-soft); color:var(--accent-press)}
+.role{font-size:10.5px; font-weight:700; letter-spacing:.07em; border-radius:4px; padding:3px 6px; flex:0 0 auto}
+.role.r-sel{background:var(--accent-soft); color:var(--accent-press)}
+.role.r-up{background:var(--warn-soft); color:var(--warn)}
+.role.r-down{background:var(--down-soft); color:var(--down)}
+.rtitle{font-weight:600; flex:1 1 220px; min-width:0}
+.est{display:flex; border:1px solid var(--line); border-radius:7px; overflow:hidden; flex:0 0 auto}
+.est button{background:var(--card); border:none; color:var(--muted); font-family:inherit; font-size:11.5px; font-weight:600; padding:5px 9px; cursor:pointer; border-right:1px solid var(--line)}
+.est button:last-child{border-right:none}
+.est button.on-pendiente{background:var(--pend-soft); color:var(--fg)}
+.est button.on-en_curso{background:var(--warn-soft); color:var(--warn)}
+.est button.on-cerrada{background:var(--ok-soft); color:var(--ok)}
+.est button:disabled{cursor:default; opacity:.55}
+.chev{flex:0 0 auto; color:var(--muted); font-family:var(--font-m); transition:transform .15s}
+.row.open .chev{transform:rotate(90deg)}
+.rmeta{display:flex; flex-wrap:wrap; gap:6px; padding:0 12px 10px; align-items:center}
+.chip{font-size:11.5px; border-radius:5px; padding:2.5px 7px; background:var(--pend-soft); color:var(--muted); font-weight:600}
+.chip.tp{background:var(--panel); border:1px solid var(--line-soft); color:var(--fg)}
+.chip.free{background:var(--ok-soft); color:var(--ok)}
+.chip.wait{background:var(--warn-soft); color:var(--warn)}
+.chip.dep{cursor:pointer; font-family:var(--font-m); background:var(--card); border:1px solid var(--line); color:var(--fg)}
+.chip.dep:hover{border-color:var(--accent); color:var(--accent-press)}
+.rbody{display:none; padding:2px 14px 13px; border-top:1px dashed var(--line-soft); font-size:13.5px}
+.row.open .rbody{display:block}
+.rbody p{margin:9px 0 0; max-width:75ch}
+.rbody .lbl{display:block; font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:2px}
+.rbody .deplink{color:var(--accent-press); cursor:pointer; text-decoration:underline; font-family:var(--font-m); font-size:12.5px}
+.focusbtn{background:none; border:1px solid var(--line); border-radius:7px; color:var(--accent-press); font-family:inherit; font-size:12px; font-weight:700; padding:5px 10px; cursor:pointer; margin-top:11px}
+.focusbtn:hover{border-color:var(--accent)}
+.row.dim{opacity:.28}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+.empty{color:var(--muted); text-align:center; padding:30px 0}
+
+/* Red de dependencias */
+.netbox{background:var(--panel); border:1px solid var(--line-soft); border-radius:12px; padding:14px; position:relative}
+.netbox h2{margin:0 0 4px; font-size:11px; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); font-weight:700}
+.nethint{font-size:12.5px; color:var(--muted); margin:0 0 10px}
+#netwrap{position:relative; background:var(--card); border:1px solid var(--line-soft); border-radius:10px; overflow:hidden}
+#net{display:block; width:100%; touch-action:none; cursor:grab}
+#tooltip{position:absolute; pointer-events:none; background:var(--ink); color:#fff; border-radius:8px; padding:7px 10px; font-size:12px; max-width:240px; display:none; z-index:4; line-height:1.35}
+#tooltip .tid{font-family:var(--font-m); color:#e8b84a; font-weight:600}
+#tooltip .tst{color:rgba(255,255,255,.64)}
+.netlegend{display:flex; flex-wrap:wrap; gap:8px 16px; margin-top:10px; font-size:12px; color:var(--muted); align-items:center}
+.netlegend .li{display:inline-flex; align-items:center; gap:6px}
+.netlegend .sw{width:11px; height:11px; border-radius:50%; display:inline-block; border:2px solid transparent}
+#netinfo{display:none; margin-top:12px; background:var(--card); border:1px solid var(--line-soft); border-left:4px solid var(--accent); border-radius:10px; padding:12px 14px}
+#netinfo.show{display:block}
+#netinfo .nid{font-family:var(--font-m); font-weight:600; font-size:12px; background:var(--pend-soft); border-radius:5px; padding:2px 7px; margin-right:8px}
+#netinfo .nt{font-weight:700}
+#netinfo p{margin:7px 0 0; color:var(--muted); font-size:13px; max-width:80ch}
+#netinfo .nbtns{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap}
+#netinfo button{font-family:inherit; font-size:12.5px; font-weight:700; border-radius:7px; padding:6px 12px; cursor:pointer; border:1px solid var(--line); background:var(--card); color:var(--fg)}
+#netinfo button.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+#netinfo button.primary:hover{background:var(--accent-press)}
+@media (prefers-reduced-motion: reduce){ *{transition:none !important} }
+@media (max-width:640px){ .rhead{gap:8px} .est button{padding:5px 7px} header.top{padding:18px 16px} }
+</style>
+
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="kicker">Grupo Comar · PFI Galpones Modulares</p>
+    <h1>Camino crítico PFC-2026</h1>
+    <p class="sub">Las 70 correcciones de la tercera entrega ordenadas por dependencia. El avance que carguen acá lo ve todo el grupo.</p>
+  </div>
+  <div class="globalprog">
+    <div class="nums"><span id="gdone">0 cerradas</span><span id="gtot">de 70</span></div>
+    <div class="bar" id="gbar"><i class="bok" style="width:0%"></i><i class="bwip" style="width:0%"></i></div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button id="tab-cuadro" class="active">Cuadro</button>
+  <button id="tab-red">Red de dependencias</button>
+</nav>
+
+<div id="banner"></div>
+
+<section id="view-cuadro">
+<div class="flowbox">
+  <h2>Flujo de fases y checkpoints</h2>
+  <div class="flowscroll"><div class="flow" id="flow"></div></div>
+  <div class="branches" id="branches"></div>
+</div>
+
+<div class="filters">
+  <select id="ffase" aria-label="Filtrar por fase">
+    <option value="all">Todas las fases</option>
+  </select>
+  <select id="ftipo" aria-label="Filtrar por tipo">
+    <option value="all">Todos los tipos</option>
+    <option>Decisión</option><option>Recálculo</option><option>Dato</option><option>Redacción</option><option>Anexo</option>
+  </select>
+  <select id="fest" aria-label="Filtrar por estado">
+    <option value="all">Cualquier estado</option>
+    <option value="pendiente">Pendientes</option>
+    <option value="en_curso">En curso</option>
+    <option value="cerrada">Cerradas</option>
+    <option value="libre">Destrabadas (sin requisitos pendientes)</option>
+  </select>
+  <input type="search" id="fq" placeholder="Buscar texto, sección o tabla">
+  <button class="clear" id="fclear">Limpiar</button>
+  <span class="count" id="fcount"></span>
+</div>
+
+<div id="focusbar" hidden></div>
+
+<main id="board"></main>
+</section>
+
+<section id="view-red" hidden>
+  <div class="netbox">
+    <h2>Red de dependencias</h2>
+    <p class="nethint">Cada círculo es una corrección, su tamaño indica cuántas desbloquea y su color el estado. Los nodos oscuros son los checkpoints. Tocá un nodo para ver su cadena, arrastralo para acomodar la red.</p>
+    <div id="netwrap">
+      <canvas id="net"></canvas>
+      <div id="tooltip"></div>
+    </div>
+    <div class="netlegend">
+      <span class="li"><span class="sw" style="background:#fff;border-color:var(--line)"></span>Pendiente</span>
+      <span class="li"><span class="sw" style="background:#f0b429;border-color:#f0b429"></span>En curso</span>
+      <span class="li"><span class="sw" style="background:#2e9e68;border-color:#2e9e68"></span>Cerrada</span>
+      <span class="li"><span class="sw" style="background:var(--ink);border-color:var(--ink)"></span>Checkpoint</span>
+      <span class="li"><span class="sw" style="background:#fff;border-color:#e3a008"></span>Requisito de la selección</span>
+      <span class="li"><span class="sw" style="background:#fff;border-color:var(--down)"></span>La selección desbloquea</span>
+      <span class="li"><span class="sw" style="background:#fff;border-color:var(--accent)"></span>Seleccionada</span>
+    </div>
+    <div id="netinfo"></div>
+  </div>
+</section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+'use strict';
+const SUPABASE_URL='https://mwwkwznvyalctmrzhtrg.supabase.co';
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im13d2t3em52eWFsY3RtcnpodHJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMTc1ODcsImV4cCI6MjA5Njc5MzU4N30.P_q8tUQBAFMiNBXdMLyXDR_PSUefponllWZoe05QCwk';
+const TABLA='camino_estado';
+const FASES=[
+ {id:'F0',cp:'CP0',n:'Base única de tiempos',d:'Una sola versión de hojas, parámetros y magnitudes. Nodo raíz'},
+ {id:'F1',cp:'CP1',n:'Productividad recalculada',d:'Línea de base con el estándar correcto por registro'},
+ {id:'F2',cp:'CP2',n:'Alternativas recalculadas',d:'Capacidad y costo futuro de cada propuesta'},
+ {id:'F3',cp:'CP3',n:'Sistema completo',d:'Seis puestos con el paquete, por escenario de peso'},
+ {id:'F4',cp:'CP4',n:'Selección y metas',d:'Qué selección se sostiene y cálculo final del conjunto'},
+ {id:'F5',cp:'CP5',n:'Recursos y presupuesto',d:'Horas, paradas, aceptación y financiamiento'},
+ {id:'VC',cp:'VC',n:'Validación comercial',d:'Rama paralela. Empalma antes del cierre de CP4',branch:true},
+ {id:'TX',cp:'TX',n:'Transversales',d:'Pasada final de redacción y evidencia, después de CP4',branch:true}
+];
+const D=[
+{id:'01',f:'F0',t:'Adoptar la hoja de armado revisada',d:'El cuerpo usa 40,14 y 48,17 min por pieza y 0,727 t/h. La revisión del anexo da 41,35 y 57,44 min y cerca de 0,619 t/h, una reducción cercana al 15 % de la capacidad usada. La brecha a cerrar cambia.',src:'Dev §3',af:'11.2.2, Tablas 6.5, 6.6, 8.1, 8.2, 12.4, 15.3, 16.4, 17, Anexos A y C',dep:[],fix:'Decisión del grupo sobre la versión vigente, regenerar el modelo de capacidad y verificar que anexo, modelo y tablas digan lo mismo.',tp:['Decisión','Recálculo']},
+{id:'02',f:'F0',t:'Conciliar las horas hombre del armado',d:'A.1 informa 65,35 min por pieza de columna, C.2 carga 48, C.4 da cerca de 1,68 h-h/t y la Tabla 8.1 usa 2,271. Tiempo de ciclo, trabajo activo y dotación asignada son magnitudes distintas que hoy se usan indistintamente.',src:'Dev §3',af:'Anexos A y C, Tabla 8.1, matriz de priorización, cálculos de ahorro',dep:['01'],fix:'Definir las tres magnitudes por escrito, asignar cada una a su uso (capacidad o ahorro) y corregir donde se mezclaron.',tp:['Decisión','Redacción']},
+{id:'03',f:'F0',t:'Incorporar los tiempos de punteo al modelo',d:'El relevamiento de rigidizadores y soportes de correa quedó informado pero no incorporado. Columna de 246,4 a 258,5 min, viga de 309,2 a 327,3.',src:'Dev §4',af:'6.3.3.2, modelo de capacidad, 11.2.3, Q1, Q2, Q3',dep:['01'],fix:'Definir el escenario con parámetros actualizados dentro del inventario de versiones. Su efecto sobre el sistema se corre en la fila 31.',tp:['Recálculo']},
+{id:'04',f:'F0',t:'Definir el tratamiento de la incertidumbre',d:'La Tabla 6.4 informa ±12,6 % y ±20,0 % en bloques que no alcanzan el ±10 % adoptado. Hay que relacionar la precisión del bloque cronometrado con el estándar completo.',src:'Dev §5',af:'Tabla 6.4, 6.3.3, capacidad de soldadura automática y manual',dep:['01'],fix:'Elegir el camino (ampliar mediciones, separar componentes o escenarios) y calcular la precisión del estándar completo por puesto. La demostración de que la recomendación resiste se corre en la fila 32.',tp:['Decisión','Recálculo']},
+{id:'05',f:'F0',t:'Reemplazar la columna certidumbre',d:'Definirla como complemento del error relativo confunde con el nivel de confianza.',src:'Dev §5',af:'Tabla 6.4',dep:['04'],fix:'Informar directamente media, intervalo, precisión relativa y cantidad de observaciones.',tp:['Redacción']},
+{id:'06',f:'F0',t:'Producir el inventario de versiones',d:'Versión, fecha, parámetros y piezas a las que se aplica cada hoja, conciliado con el modelo y con las tablas. Es el entregable que materializa CP0.',src:'Dev §14',af:'Todo el informe y los anexos de cálculo',dep:['01','02','03','04'],fix:'Compilar el inventario y verificar dígito a dígito contra Tablas 6.5, 6.6 y 8.1.',tp:['Anexo']},
+{id:'07',f:'F1',t:'Asignar el estándar correcto a cada registro',d:'La depuración corrigió las horas registradas pero no la referencia contra la que se comparan. Son dos trabajos y falta el segundo.',src:'Dev §2 Depuración',af:'Anexo F.3, 7.3.1',dep:['CP0'],fix:'Recorrer los 192 registros y cargar el estándar por tipo de pieza de la base congelada.',tp:['Recálculo']},
+{id:'08',f:'F1',t:'Trasladar el 90,9 % a tabla e indicador',d:'La explicación del estándar por tipo de pieza existe pero el informe sigue usando 101,1 % para soldadura manual.',src:'Dev §2 Eficiencia y §7',af:'Tabla 7.1, 7.3.1',dep:['07'],fix:'Reemplazar el valor en la tabla principal y en el indicador agregado, no solo en el párrafo que lo explica.',tp:['Recálculo']},
+{id:'09',f:'F1',t:'Recalcular los indicadores de productividad',d:'Eficiencia global, brechas, tiempo por encima del estándar y tasa de cumplimiento, registro por registro. La aproximación del tutor da un orden del 73 % en lugar del 77,9 %.',src:'Dev §7',af:'7.3.1, 8.4.2, 11.3.x, 16.4',dep:['07'],fix:'Correr los indicadores sobre la base con estándar correcto y propagar el nuevo punto de partida.',tp:['Recálculo']},
+{id:'10',f:'F1',t:'Recalcular la tasa de cumplimiento',d:'El nombre quedó corregido, el valor sigue dependiendo de la base que se revise.',src:'Dev §2 PPC',af:'7.3.1',dep:['07'],fix:'Sale del mismo recálculo de la fila 09.',tp:['Recálculo']},
+{id:'11',f:'F1',t:'Separar desvío de desperdicio accionable',d:'La suma de desvíos positivos describe excesos registrados, no demuestra horas eliminables.',src:'Dev §7',af:'7.3.1, 7.3.2, fichas de la sección 10',dep:['09'],fix:'Presentar primero el tiempo sobre estándar y después identificar qué parte es desperdicio sobre el que se puede actuar.',tp:['Redacción']},
+{id:'12',f:'F1',t:'Conciliar esperas del estándar con mejoras',d:'Si una espera ya está dentro del tiempo de la hoja y después se descuenta como mejora, se cuenta dos veces el mismo beneficio.',src:'Dev §7',af:'Hojas de operación, 11.2.3, 11.3.2, 11.3.3',dep:['07'],fix:'Desagregar trabajo, desplazamiento, espera y suplementos, y construir la matriz minuto a propuesta antes de recalcular alternativas.',tp:['Recálculo','Redacción']},
+{id:'13',f:'F1',t:'Comprobar los 37 minutos de espera',d:'Salen de un período observado puntual. Antes de tratarlos como línea de base habitual hay que comprobar si se sostienen.',src:'Dev §2 Improductividades',af:'7.3.2, 11.3.2, G1',dep:[],fix:'Nuevas observaciones o registro de solicitudes de izaje que confirme o corrija el valor. Relevable desde hoy, se usa recién tras CP1.',tp:['Dato']},
+{id:'14',f:'F1',t:'Evidencia de la clasificación con IA',d:'Qué registros se revisaron, cuál era la clasificación esperada y qué errores aparecieron. Una muestra final de 25 sin errores no alcanza.',src:'Dev §2 Clasificación',af:'5.4, Anexo F',dep:[],fix:'Compilar la evidencia y correr una muestra de control que no haya intervenido en la calibración.',tp:['Anexo','Dato']},
+{id:'15',f:'F2',t:'Recalcular las alternativas de armado',d:'Las tres alternativas y la variante de repliegue, sobre la hoja revisada, para ambas órdenes, revisando los tamaños de lote. No asumir que el sentido de la comparación no cambia, demostrarlo.',src:'Dev §3',af:'11.2.2 completo, Tablas 11.2.2.a a d',dep:['CP0','CP1'],fix:'Correr el modelo de cada alternativa con los tiempos congelados y actualizar las tablas comparativas.',tp:['Recálculo']},
+{id:'16',f:'F2',t:'R2, recalcular y verificar el manipulador',d:'Su capacidad depende de la revisión del armado. Falta comprobar alcance, carga, geometrías, superficie de toma y comportamiento ante pérdida de vacío, y completar la viga con garras con la segunda orden.',src:'Dev §10 R2',af:'11.2.2, portafolio',dep:['15'],fix:'Recálculo más verificación técnica contra las piezas previstas, no solo la pieza ilustrativa.',tp:['Recálculo','Dato']},
+{id:'17',f:'F2',t:'P1, demostrar la secuencia de 0,946 t/h',d:'Incluir carga, giro, cepillado, descarga, cambios e interferencias. Verificar que la velocidad de soldadura propuesta conserve la calidad.',src:'Dev §10 P1',af:'11.2.1',dep:['CP0'],fix:'Diagrama hombre máquina de la secuencia y respaldo de la velocidad (norma, ensayo o fabricante).',tp:['Recálculo','Dato']},
+{id:'18',f:'F2',t:'Q1, comprobar el tiempo remanente',d:'Marcar desde el corte evita medición y trazado pero siguen presentación, sujeción, orientación, verificación y punteo. Un ensayo vale más que una reducción estimada.',src:'Dev §10 Q1 y §4',af:'11.2.3, 11.3.3',dep:['CP0','03'],fix:'Desagregar el elemento y ensayar en planta con piezas representativas midiendo tiempo y calidad.',tp:['Dato','Recálculo']},
+{id:'19',f:'F2',t:'C1, secuencia de 71,3 a 32 minutos',d:'Definir cómo circula la pieza, dónde trabaja el operario, cómo accede a las superficies y cómo funciona la extracción.',src:'Dev §10 C1',af:'11.3.4',dep:['CP0','CP1'],fix:'Describir y justificar el método propuesto paso a paso con sus tiempos. El 71,3 depende de la base depurada.',tp:['Recálculo','Redacción']},
+{id:'20',f:'F2',t:'B2, línea de base de abrasivo',d:'Sin pesajes no se puede cuantificar el ahorro. Definir qué se pesa y cómo cierra el balance entre ingreso, circulación, descarte y reposición, con operación y mantenimiento del circuito.',src:'Dev §10 B2 y §12',af:'11.3.5, 14.1, 14.2',dep:[],fix:'Protocolo de pesaje, ejecución de la medición y balance cerrado. Relevable desde hoy, se usa tras CP2.',tp:['Dato']},
+{id:'21',f:'F2',t:'S2, justificación técnica del rotador',d:'Apoyos, estabilidad, fijación, accionamiento y tiempo de maniobra. Su efecto se combina con Q1 por elemento de trabajo, no sumando porcentajes generales.',src:'Dev §10 S2',af:'11.3.3',dep:['18'],fix:'Memoria técnica del dispositivo y combinación elemento por elemento con Q1.',tp:['Recálculo','Dato']},
+{id:'22',f:'F2',t:'A2, disponibilidad real del semipórtico',d:'Demostrar que el semipórtico liberado queda disponible y que su recorrido es compatible con la distribución. Diferenciar la cota superior de costo del presupuesto que esperan ejecutar.',src:'Dev §10 A2',af:'11.3.1, 15.4.1',dep:['16'],fix:'Balance de ocupación del semipórtico y verificación del recorrido sobre el plano.',tp:['Recálculo']},
+{id:'23',f:'F2',t:'G1, meta respaldada para el izaje',d:'La regla de prioridad determina quién espera, no elimina la espera. La meta necesita respaldo.',src:'Dev §10 G1',af:'11.3.2',dep:['13'],fix:'Fijar la meta sobre el registro de solicitud, disponibilidad, atención y duración, y prever la medición de comprobación.',tp:['Dato','Redacción']},
+{id:'24',f:'F2',t:'M1, destino de plegado y guillotina',d:'Liberar una zona no alcanza si el sector trasladado queda con nuevas dificultades. Falta cerrar accesos, instalaciones y espacio de operación, y cómo se recibe y repone el material.',src:'Dev §10 M1',af:'11.3.7, 15.5',dep:['CP0'],fix:'Completar el diseño del sector trasladado y el circuito de recepción y reposición.',tp:['Redacción','Recálculo']},
+{id:'25',f:'F2',t:'Precisar el retiro de N1',d:'Acercar el almacén no elimina toda la reposición y el control. Hay que decir qué operación desaparece y quién queda a cargo de las que continúan.',src:'Dev §10 N1',af:'11.3.8, 15.4.2, 13.2.4',dep:['24'],fix:'Describir el proceso que reemplaza a N1 y asignar responsables.',tp:['Redacción']},
+{id:'26',f:'F2',t:'E0, sistema de uso de las hojas',d:'Cómo se emite el estándar correcto para cada orden, cómo se completa el registro y cómo se controlan las versiones. Revisar si las dos horas quincenales alcanzan.',src:'Dev §10 E0',af:'11.4',dep:['CP0'],fix:'Procedimiento de emisión, registro y control de versiones, con cierre que produzca decisiones.',tp:['Redacción','Decisión']},
+{id:'27',f:'F3',t:'Corregir la holgura de granallado',d:'Con 0,882 t/h publicados y 30 kg/m², el requerimiento de 0,938 t/h supera la capacidad y granallado permite cerca de 5.174 m². No se puede afirmar que los restrictivos son los mismos en toda la banda.',src:'Dev §6',af:'6.3.6, 6.3.7, 8.3, 11.3.4, 12.4',dep:['CP0'],fix:'Corregir la afirmación y recalcular la restricción por escenario de peso.',tp:['Recálculo','Redacción']},
+{id:'28',f:'F3',t:'Tabla final de los seis puestos',d:'Capacidad después de implementar el paquete, incluyendo C1 y B2, con el mismo mix, calendario y criterio. Mostrar la restricción en cada escenario.',src:'Dev §6 y §14',af:'12.4, 15, 16.4, 17',dep:['CP2','27'],fix:'Correr el modelo del sistema con las capacidades futuras congeladas en CP2, en 25, 27,5 y 30 kg/m².',tp:['Recálculo']},
+{id:'29',f:'F3',t:'Integrar el izaje al conjunto',d:'Cada puesto calculado por separado puede necesitar el mismo equipo al mismo tiempo. Un balance temporal y una secuencia justificados alcanzan para esta etapa.',src:'Dev §8',af:'6.3, 11.3.1, 11.3.2, 12.4',dep:['CP2'],fix:'Balance temporal del puente y los semipórticos sobre la secuencia de operación propuesta.',tp:['Recálculo']},
+{id:'30',f:'F3',t:'Corregir la matriz de priorización',d:'Los valores de armado y la sensibilidad del eje de capacidad. Con los datos publicados, granallado no conserva holgura en todo el rango de peso.',src:'Dev §2 Matriz',af:'Tablas 8.1, 8.2, 8.3',dep:['CP0','27'],fix:'Recalcular la matriz con la base congelada y la banda de peso completa.',tp:['Recálculo']},
+{id:'31',f:'F3',t:'Escenario de punteo sobre Q1 Q2 Q3',d:'Que un tiempo mayor refuerce la restricción no demuestra que la solución siga alcanzando la meta. Son dos verificaciones distintas.',src:'Dev §4',af:'11.2.3, 11.3.3, sistema',dep:['CP2','03'],fix:'Evaluar las tres propuestas contra el escenario de punteo definido en F0.',tp:['Recálculo']},
+{id:'32',f:'F3',t:'Sensibilidad del sistema a los tiempos',d:'Reportar el error y después usar la capacidad como valor exacto no alcanza. Demostrar si la recomendación se mantiene cuando los tiempos se apartan del valor central.',src:'Dev §5',af:'6.3, 8, 15, 17',dep:['28','04'],fix:'Correr el sistema completo en los extremos de los intervalos definidos en F0 y mostrar si cambia la restricción o la conclusión.',tp:['Recálculo']},
+{id:'33',f:'F3',t:'Validar el modelo fuera de muestra',d:'Contrastar con casos que no se usaron para construirlo, una orden o un período distinto.',src:'Dev §2 Validación',af:'6.3.8',dep:['CP0'],fix:'Elegir una orden fuera de muestra, cargarla al modelo y comparar contra lo ocurrido. El dato se puede relevar antes.',tp:['Dato','Recálculo']},
+{id:'34',f:'F3',t:'Distribución detallada de sectores',d:'Verificar que las piezas puedan entrar, trasladarse y transferirse sin interferencias, por la longitud de las estructuras y las cargas suspendidas.',src:'Dev §12 Espacio',af:'15.5, 15.6, 16.4',dep:['CP2','24','22'],fix:'Plano detallado de los sectores modificados con zonas de trabajo y movimientos que respalden los recorridos.',tp:['Recálculo','Anexo']},
+{id:'35',f:'F4',t:'Revisar la selección con la base nueva',d:'En las decisiones más ajustadas, mostrar qué peso, tiempo, costo o valoración tendría que cambiar para que otra alternativa resulte preferible.',src:'Dev §11',af:'15.2, 15.3',dep:['CP3'],fix:'Rehacer los puntajes con capacidades y costos congelados y agregar el análisis de punto de quiebre.',tp:['Recálculo']},
+{id:'36',f:'F4',t:'Explicar el solapamiento de criterios',d:'Una misma reducción puede influir en impacto, reducción de horas y costo operativo a la vez.',src:'Dev §11',af:'15.1, 15.2',dep:['35'],fix:'Párrafo que declare el solapamiento y cómo afecta la selección.',tp:['Redacción']},
+{id:'37',f:'F4',t:'Acotar el lenguaje de robustez',d:'Una ventaja de puntaje no demuestra que resista cualquier variación razonable. Los pesos expresan el criterio del grupo.',src:'Dev §11',af:'15.3.1, 3.2.6',dep:['35'],fix:'Limitar las declaraciones de robustez al alcance de la sensibilidad realizada.',tp:['Redacción']},
+{id:'38',f:'F4',t:'Construir la meta del 90 %',d:'Tiempo real objetivo igual a estándar total sobre 0,90. Mostrar cuántas horas hay que reducir y dónde se recuperan. El 92,7 % de soldadura automática es referencia, no demostración.',src:'Dev §7 Meta',af:'8.4.2, 16.6, 17',dep:['CP1','CP2'],fix:'Cálculo puesto por puesto que llegue al agregado, desde la línea de base de CP1 y las mejoras de CP2.',tp:['Recálculo']},
+{id:'39',f:'F4',t:'Cálculo final del conjunto',d:'El objetivo no queda demostrado porque esté bien formulado ni porque exista una alternativa para cada problema. Falta la demostración cuantitativa.',src:'Dev §2 Objetivos',af:'8.4, 16, 17',dep:['CP3','38','VC'],fix:'Demostrar que el paquete alcanza Q1 y Q2 con la capacidad del sistema y la demanda validada.',tp:['Recálculo']},
+{id:'40',f:'F4',t:'Clasificar el efecto de cada propuesta',d:'Reducir contenido de trabajo, ejecutar con regularidad el método o aumentar la producción del sistema son mejoras distintas.',src:'Dev §1 Relación',af:'8, 15, 17',dep:['CP3'],fix:'Clasificar cada propuesta por tipo de efecto y mostrar cómo se traduce en el objetivo.',tp:['Redacción']},
+{id:'41',f:'F4',t:'Renuncias de la disposición 1',d:'No aloja el paquete completo. Mostrar a qué mejora se renuncia y qué resultado se deja de obtener.',src:'Dev §12 Disposiciones',af:'15.6',dep:['35'],fix:'Cuantificar lo que se pierde si se elige la intervención mínima.',tp:['Redacción']},
+{id:'42',f:'F4',t:'FODA revisitado',d:'Indicar qué hipótesis se confirmaron, cuáles se modificaron y cuáles no se pudieron verificar después del diagnóstico.',src:'Dev §2 FODA',af:'2.3, 17',dep:['CP1','CP3','VC'],fix:'Apartado de revisión del FODA con el estado de cada hipótesis.',tp:['Redacción']},
+{id:'43',f:'F5',t:'Presupuesto con origen de cada valor',d:'Identificar de manera uniforme cotizaciones, precios publicados, estimaciones y recursos propios. En importados, dejar visibles los conceptos no incluidos. Aclarar el criterio de los retazos.',src:'Dev §13',af:'15.4.4, 16.3',dep:['CP4'],fix:'Columna de origen en el presupuesto y notas de conceptos pendientes.',tp:['Redacción']},
+{id:'44',f:'F5',t:'Conciliar el costo de S2',d:'En la Tabla 11.18 figuran 1.200 USD y en el portafolio 2.350. Explicar si cambió el diseño, la cantidad, el alcance o la revisión.',src:'Dev §10 S2',af:'Tabla 11.18, 15.4.4',dep:['21'],fix:'Un solo valor con la explicación del cambio.',tp:['Recálculo']},
+{id:'45',f:'F5',t:'Asignar las 204 horas de ingeniería',d:'Más las tareas adicionales sin estimar. El tiempo de los socios puede no costar dinero y aun así limitar el plazo.',src:'Dev §13',af:'16.2, 16.3',dep:['CP4'],fix:'Asignación por tarea y tratamiento del tiempo de los socios como restricción de plazo.',tp:['Recálculo']},
+{id:'46',f:'F5',t:'Distribuir las 1.793 horas propias',d:'Por especialidad y por mes. Comparar la demanda de febrero a abril con las horas disponibles después de producción y mantenimiento.',src:'Dev §13',af:'16.2, 16.3',dep:['CP4'],fix:'Cronograma de horas contra disponibilidad para sostener la implementación con la dotación actual.',tp:['Recálculo']},
+{id:'47',f:'F5',t:'Plan de paradas e inventario',d:'Que los 21 días no sean simultáneos no demuestra flujo sin impacto. Definir producción anticipada, inventario intermedio, cobertura y recuperación.',src:'Dev §13',af:'16.1, 16.2',dep:['CP4'],fix:'Plan de producción anticipada e inventario con su dimensionamiento.',tp:['Recálculo']},
+{id:'48',f:'F5',t:'Criterios de aceptación por mejora',d:'Cuánto debe rendir cada puesto, con qué pieza o mix, durante qué prueba y en qué condiciones, con respuesta técnica y consecuencia sobre el cronograma si no cumple.',src:'Dev §13',af:'16.5, 16.6',dep:['CP2'],fix:'Tabla de criterios de aceptación por mejora con contingencia.',tp:['Redacción','Decisión']},
+{id:'49',f:'F5',t:'Riesgos de los equipos nuevos',d:'Un manipulador, un rotador o un automatismo reducen una tarea y necesitan controles propios, que deben llegar al diseño, al presupuesto y a la puesta en servicio.',src:'Dev §12 Seguridad',af:'13.2, 15.4.4, 16',dep:['CP4'],fix:'Identificación de riesgos por equipo nuevo con sus controles costeados.',tp:['Redacción','Recálculo']},
+{id:'50',f:'F5',t:'Financiamiento del capital de trabajo',d:'Los 420.000 USD necesitan origen de fondos, disponibilidad, condiciones y devolución. Aclarar qué flujo se evalúa, proyecto o aporte de los socios.',src:'Dev §9',af:'6.2.2, 6.2.4',dep:['CP4'],fix:'Definición con los socios del esquema de financiamiento y su tratamiento en el flujo. Definible desde hoy.',tp:['Dato','Decisión']},
+{id:'51',f:'F5',t:'Actualizar el flujo al paquete final',d:'La rentabilidad del escenario preliminar de 200.000 USD no valida económicamente el conjunto final. Actualizar inversión, desembolsos, costos y ventas.',src:'Dev §9',af:'6.2, 15.4.4, 17',dep:['CP4','43'],fix:'Acotar el alcance del flujo preliminar en el texto y actualizar la evaluación con el paquete final.',tp:['Redacción','Recálculo']},
+{id:'52',f:'F5',t:'Energía en el mismo escenario',d:'Si se divide un consumo estimado entre capacidad máxima hay que explicar qué condiciones representa. Los cerca de 119 kWh/t quedan como estimación hasta el contraste.',src:'Dev §12 Consumos',af:'14.1',dep:['CP3'],fix:'Revisar la consistencia del indicador y declarar su alcance.',tp:['Redacción']},
+{id:'53',f:'VC',t:'Serie de despachos (3.500 m²)',d:'Demostrar qué representa el volumen actual sobre el que se proyecta el crecimiento. La explicación del recorte de los 436.567 kg no lo verifica. Pendiente desde la auditoría anterior.',src:'Dev §2 Producción',af:'2.5, 6.3.6, 8.4.1',dep:[],fix:'Obtener la serie de despachos de varios meses del registro de la empresa.',tp:['Dato']},
+{id:'54',f:'VC',t:'Reconstruir la conversión del embudo',d:'Para un período y segmento definidos, qué oportunidades se ganaron, cuáles se perdieron y cuáles siguen abiertas. Distinguir conversión por operaciones y por superficie.',src:'Dev §2 Conversión',af:'2.5.2, 2.5.3',dep:[],fix:'Relevamiento del registro comercial con el cierre de cada oportunidad del período.',tp:['Dato']},
+{id:'55',f:'VC',t:'Depurar las 621 oportunidades',d:'Revisar cuáles corresponden al comprador y al alcance del canal propuesto. La etiqueta Proyectista no alcanza por sí sola.',src:'Dev §9',af:'2.5.2',dep:['54'],fix:'Depuración de la clasificación con criterio documentado.',tp:['Dato']},
+{id:'56',f:'VC',t:'Recurrencia del antecedente de 2.500 m²',d:'Explicar qué permitiría pasar de esa operación aislada a una venta recurrente.',src:'Dev §9',af:'2.5, 17',dep:['54'],fix:'Análisis del antecedente con las condiciones de recurrencia.',tp:['Redacción','Dato']},
+{id:'57',f:'VC',t:'Por qué no continuaron los intermediarios',d:'Capacidad, condiciones comerciales, prioridad de obra propia o falta de pedidos implican cosas distintas para el proyecto.',src:'Dev §9',af:'2.5, 3.2',dep:[],fix:'Entrevistas con los socios o el área comercial, documentadas.',tp:['Dato']},
+{id:'58',f:'VC',t:'Validar coeficientes y captación',d:'La clasificación de clientes, los coeficientes y la captación necesaria. La estimación del segmento no es una previsión de ventas.',src:'Dev §2 Dimensionamiento',af:'2.5.2',dep:['54','55'],fix:'Contraste de los coeficientes con el registro depurado y lenguaje de estimación en el texto.',tp:['Dato','Redacción']},
+{id:'59',f:'VC',t:'Resolver 2.318 contra 3.246 m²',d:'Vender 2.000 m² sería el 86 % de uno y el 62 % del otro. Sin conciliar la banda no hay conclusión firme sobre penetración.',src:'Dev §9 Filtros',af:'2.5.2.2, 2.5.2.3, Tabla 2.4, 3.2.5',dep:[],fix:'Elegir una sola banda, documentar su derivación y propagarla a todas las menciones.',tp:['Recálculo']},
+{id:'60',f:'VC',t:'Prorrateo como escenario explícito',d:'Suponer que los registros sin clasificar tienen composición similar es una condición que debe quedar declarada. Mantener separados registro, prorrateo, potencial y captación.',src:'Dev §9',af:'2.5.2',dep:['55'],fix:'Reencuadre del prorrateo como escenario condicionado.',tp:['Redacción']},
+{id:'61',f:'VC',t:'Respaldo de PESTEL y Porter',d:'Preferencias de compra, plazo frente a precio y disponibilidad de fabricantes necesitan fuente. El contexto formula preguntas, no las responde.',src:'Dev §2 PESTEL',af:'2.1, 2.2',dep:[],fix:'Evidencia primaria o reencuadre como hipótesis a validar.',tp:['Dato','Redacción']},
+{id:'62',f:'VC',t:'Cierre prudente del AHP estratégico',d:'Las diferencias son chicas (0,688 contra 0,666 y 0,654) y la falta de demanda relevada de fasón no demuestra que no exista. La conclusión aceptable es que A1 es la mejor con la información disponible.',src:'Dev §1 y §2',af:'3.2.5 a 3.2.8, 17',dep:['54','55','56','57','58'],fix:'Completar la evidencia de las valoraciones determinantes y acotar el lenguaje del cierre.',tp:['Redacción','Dato']},
+{id:'63',f:'VC',t:'Beneficio marginal, decisión y no demostración',d:'No presentar como demostrado que el beneficio cae a partir de cierto volumen sin estudio de costos. La decisión de los socios es una restricción válida.',src:'Dev §1',af:'3.2.1, 3.2.5',dep:[],fix:'Reencuadrar como decisión de la dirección sin respaldo de estudio.',tp:['Redacción']},
+{id:'64',f:'VC',t:'Alcance de los resultados financieros',d:'VAN 24 m de 21.712 USD, VAN 36 m de 148.667 y recupero en 21 meses corresponden a las condiciones de su escenario. No demuestran demanda ni volumen.',src:'Dev §9',af:'6.2.4',dep:[],fix:'Nota de alcance junto a los resultados.',tp:['Redacción']},
+{id:'65',f:'TX',t:'Lenguaje de sobrecosto y ahorro',d:'La diferencia contra un promedio hipotético no demuestra dinero ahorrable. Hace falta una modificación concreta comparada con la situación actual.',src:'Dev §2 Costos',af:'5.5, 5.6',dep:['CP1'],fix:'Pasada de lenguaje sobre las dos secciones una vez congelados los valores.',tp:['Redacción']},
+{id:'66',f:'TX',t:'Alcance del recorte de 200.000 kg',d:'No usarlo para quitar importancia a calidad, retrabajo o seguridad. Un proceso de poco volumen puede ser relevante por el problema que genera.',src:'Dev §2 Umbral',af:'5.5.1',dep:[],fix:'Nota de alcance del recorte.',tp:['Redacción']},
+{id:'67',f:'TX',t:'Recorridos como estimación paramétrica',d:'Dejar visibles los parámetros, contrastar algunos recorridos con viajes reales y no presentarlos en otras secciones como cronometrados.',src:'Dev §2 Recorridos',af:'7.3.3, Tablas 7.3 a 7.5, 15.5',dep:['CP3'],fix:'Publicar velocidades y minutos de maniobra, cronometrar algunos viajes y ajustar el lenguaje. El cronometraje se puede hacer desde hoy.',tp:['Dato','Redacción']},
+{id:'68',f:'TX',t:'Referencias de las causas raíz',d:'Precisar entrevistas y observaciones. Que el modelo no represente el izaje es una limitación del estudio, no prueba por qué la empresa no lo gestiona.',src:'Dev §2 Causas',af:'7.4, Tablas 7.7 a 7.9',dep:[],fix:'Completar fechas y entrevistados y reescribir los eslabones que se apoyan en el modelo.',tp:['Redacción']},
+{id:'69',f:'TX',t:'Ruido como lectura orientativa',d:'No convertir las lecturas en una comprobación de cumplimiento.',src:'Dev §12 Seguridad',af:'13.1.4',dep:[],fix:'Nota de alcance.',tp:['Redacción']},
+{id:'70',f:'TX',t:'Adjuntar las planillas fuente',d:'Con los PDF se contrastan resultados publicados, pero el tutor necesita fórmulas y base completa para seguir las actualizaciones.',src:'Dev §14',af:'Anexos',dep:['CP0','CP1','CP2','CP3','CP4','CP5'],fix:'Adjuntar los archivos de cálculo de la versión final congelada.',tp:['Anexo']},
+];
+
+const byId=new Map(D.map(function(r){return [r.id,r]}));
+function faseOfToken(t){ if(t==='VC')return 'VC'; return 'F'+t.charAt(2); }
+function expandTok(t){ if(byId.has(t))return [t]; const f=faseOfToken(t); return D.filter(function(r){return r.f===f}).map(function(r){return r.id}); }
+function directDeps(id){ const r=byId.get(id); const s=new Set(); r.dep.forEach(function(t){ expandTok(t).forEach(function(x){ if(x!==id)s.add(x); }); }); return Array.from(s); }
+const CHILDREN={};
+D.forEach(function(r){ directDeps(r.id).forEach(function(d){ (CHILDREN[d]=CHILDREN[d]||[]).push(r.id); }); });
+function closure(start,next){ const seen=new Set(); const q=next(start).slice(); while(q.length){ const x=q.shift(); if(seen.has(x))continue; seen.add(x); next(x).forEach(function(y){ if(!seen.has(y))q.push(y); }); } seen.delete(start); return seen; }
+function upstream(id){ return closure(id,directDeps); }
+function downstream(id){ return closure(id,function(x){ return CHILDREN[x]||[]; }); }
+
+/* Estado */
+const EST_LBL={pendiente:'Pendiente',en_curso:'En curso',cerrada:'Cerrada'};
+let estados={};
+let canWrite=null;
+let dbRef=null, uidRef=null;
+const expanded=new Set();
+const filt={fase:'all',tipo:'all',est:'all',q:''};
+let focusId=null;
+
+function est(id){ return estados[id]||'pendiente'; }
+function unlocked(id){ return directDeps(id).every(function(d){ return est(d)==='cerrada'; }); }
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function renderFlow(){
+  const flow=document.getElementById('flow'); flow.innerHTML='';
+  FASES.filter(function(f){return !f.branch}).forEach(function(f,i,arr){
+    const rows=D.filter(function(r){return r.f===f.id});
+    const done=rows.filter(function(r){return est(r.id)==='cerrada'}).length;
+    const wip=rows.filter(function(r){return est(r.id)==='en_curso'}).length;
+    const b=document.createElement('button');
+    b.className='fnode'+(filt.fase===f.id?' active':'');
+    b.innerHTML='<span class="cp">'+f.cp+'</span><div class="fn">'+esc(f.n)+'</div>'
+      +'<div class="mini"><i style="width:'+(done/rows.length*100)+'%;background:var(--ok)"></i><i style="width:'+(wip/rows.length*100)+'%;background:#e3a008"></i></div>'
+      +'<span class="cnt">'+done+'/'+rows.length+' cerradas</span>';
+    b.title=f.d;
+    b.addEventListener('click',function(){ toggleFase(f.id); });
+    flow.appendChild(b);
+    if(i<arr.length-1){ const a=document.createElement('div'); a.className='farrow'; a.textContent='→'; flow.appendChild(a); }
+  });
+  const br=document.getElementById('branches'); br.innerHTML='';
+  FASES.filter(function(f){return f.branch}).forEach(function(f){
+    const rows=D.filter(function(r){return r.f===f.id});
+    const done=rows.filter(function(r){return est(r.id)==='cerrada'}).length;
+    const b=document.createElement('button');
+    b.className='bnode'+(filt.fase===f.id?' active':'');
+    b.innerHTML='<div><div class="fn">'+esc(f.n)+' <span class="tagp">'+(f.id==='VC'?'∥ paralela':'pasada final')+'</span></div>'
+      +'<div class="joins">'+esc(f.d)+'</div></div><span class="cnt">'+done+'/'+rows.length+'</span>';
+    b.addEventListener('click',function(){ toggleFase(f.id); });
+    br.appendChild(b);
+  });
+  const total=D.length, gdone=D.filter(function(r){return est(r.id)==='cerrada'}).length, gwip=D.filter(function(r){return est(r.id)==='en_curso'}).length;
+  document.getElementById('gdone').textContent=gdone+' cerradas · '+gwip+' en curso';
+  document.getElementById('gtot').textContent='de '+total;
+  const gb=document.getElementById('gbar');
+  gb.children[0].style.width=(gdone/total*100)+'%';
+  gb.children[1].style.width=(gwip/total*100)+'%';
+}
+
+function toggleFase(f){ filt.fase=(filt.fase===f?'all':f); document.getElementById('ffase').value=filt.fase; focusId=null; render(); }
+
+function matches(r){
+  if(filt.fase!=='all'&&r.f!==filt.fase)return false;
+  if(filt.tipo!=='all'&&r.tp.indexOf(filt.tipo)<0)return false;
+  if(filt.est==='libre'){ if(est(r.id)==='cerrada'||!unlocked(r.id))return false; }
+  else if(filt.est!=='all'&&est(r.id)!==filt.est)return false;
+  if(filt.q){ const q=filt.q.toLowerCase(); const hay=(r.id+' '+r.t+' '+r.d+' '+r.af+' '+r.src+' '+r.fix).toLowerCase(); if(hay.indexOf(q)<0)return false; }
+  return true;
+}
+
+function depChipLabel(t){ return byId.has(t)?('N° '+t):t; }
+
+function rowHTML(r,role){
+  const e=est(r.id);
+  const free=unlocked(r.id);
+  const pend=directDeps(r.id).filter(function(d){return est(d)!=='cerrada'}).length;
+  const kids=CHILDREN[r.id]||[];
+  let h='<article class="row e-'+e+(role?' '+role.cls:'')+(expanded.has(r.id)?' open':'')+'" data-id="'+r.id+'">';
+  h+='<div class="rhead" data-act="toggle">';
+  h+='<span class="rid" data-act="focus" title="Ver la cadena de dependencias">'+r.id+'</span>';
+  if(role)h+='<span class="role '+role.badge+'">'+role.lbl+'</span>';
+  h+='<span class="rtitle">'+esc(r.t)+'</span>';
+  h+='<span class="est" data-act="none">';
+  ['pendiente','en_curso','cerrada'].forEach(function(s){
+    h+='<button data-act="est" data-est="'+s+'" class="'+(e===s?('on-'+s):'')+'"'+(canWrite===false?' disabled':'')+'>'+EST_LBL[s]+'</button>';
+  });
+  h+='</span><span class="chev">›</span></div>';
+  h+='<div class="rmeta">';
+  r.tp.forEach(function(t){h+='<span class="chip tp">'+t+'</span>';});
+  h+='<span class="chip">'+esc(r.src)+'</span>';
+  if(e!=='cerrada'){ h+= free?'<span class="chip free">Destrabada</span>':'<span class="chip wait">Espera '+pend+' previa'+(pend===1?'':'s')+'</span>'; }
+  if(r.dep.length){ h+='<span class="chip" style="background:none">Requiere</span>'; r.dep.forEach(function(t){ h+='<span class="chip dep" data-act="dep" data-tok="'+t+'">'+depChipLabel(t)+'</span>'; }); }
+  else h+='<span class="chip">Sin requisitos</span>';
+  h+='</div>';
+  h+='<div class="rbody">';
+  h+='<p><span class="lbl">Observación del tutor</span>'+esc(r.d)+'</p>';
+  h+='<p><span class="lbl">Afecta en el informe</span>'+esc(r.af)+'</p>';
+  h+='<p><span class="lbl">Para cerrarla</span>'+esc(r.fix)+'</p>';
+  if(kids.length){ h+='<p><span class="lbl">Desbloquea directamente</span>'; kids.forEach(function(k,i){ h+=(i?', ':'')+'<span class="deplink" data-act="dep" data-tok="'+k+'">'+k+' '+esc(byId.get(k).t)+'</span>'; }); h+='</p>'; }
+  h+='<button class="focusbtn" data-act="focus">Ver cadena completa de dependencias</button> ';
+  h+='<button class="focusbtn" data-act="net">Ver en la red</button>';
+  h+='</div></article>';
+  return h;
+}
+
+function render(){
+  renderFlow();
+  const board=document.getElementById('board');
+  const fb=document.getElementById('focusbar');
+  let html=''; let shown=0;
+  if(focusId){
+    const up=upstream(focusId), down=downstream(focusId);
+    const r0=byId.get(focusId);
+    fb.hidden=false;
+    fb.innerHTML='Cadena de <b>'+focusId+'</b> '+esc(r0.t)
+      +'<span class="leg"><span class="dot" style="background:#e3a008"></span>'+up.size+' requisito'+(up.size===1?'':'s')+'</span>'
+      +'<span class="leg"><span class="dot" style="background:var(--down)"></span>desbloquea '+down.size+'</span>'
+      +'<span class="fbbtns"><button class="red" data-act="netfocus">Ver en la red</button><button data-act="exitfocus">Salir</button></span>';
+    FASES.forEach(function(f){
+      const rows=D.filter(function(r){ return r.f===f.id && (r.id===focusId||up.has(r.id)||down.has(r.id)); });
+      if(!rows.length)return;
+      html+='<div class="ghead"><span class="gcp">'+f.cp+'</span><h3>'+esc(f.n)+'</h3></div>';
+      rows.forEach(function(r){
+        let role;
+        if(r.id===focusId)role={cls:'sel',badge:'r-sel',lbl:'SELECCIONADA'};
+        else if(up.has(r.id))role={cls:'up',badge:'r-up',lbl:'REQUISITO'};
+        else role={cls:'down',badge:'r-down',lbl:'DESBLOQUEA'};
+        html+=rowHTML(r,role); shown++;
+      });
+    });
+    document.getElementById('fcount').textContent='Cadena de '+shown+' correcciones';
+  }else{
+    fb.hidden=true;
+    FASES.forEach(function(f){
+      const rows=D.filter(function(r){return r.f===f.id&&matches(r)});
+      if(!rows.length)return;
+      const all=D.filter(function(r){return r.f===f.id});
+      const done=all.filter(function(r){return est(r.id)==='cerrada'}).length;
+      html+='<div class="ghead"><span class="gcp">'+f.cp+'</span><h3>'+esc(f.n)+'</h3><span class="gd">'+esc(f.d)+'</span><span class="gp">'+done+'/'+all.length+'</span></div>';
+      rows.forEach(function(r){ html+=rowHTML(r,null); shown++; });
+    });
+    document.getElementById('fcount').textContent='Mostrando '+shown+' de '+D.length;
+  }
+  board.innerHTML=html||'<p class="empty">Ninguna corrección coincide con los filtros.</p>';
+  if(!document.getElementById('view-red').hidden)Net.draw();
+}
+
+/* Solapas */
+function switchTab(name){
+  const cuadro=(name==='cuadro');
+  document.getElementById('view-cuadro').hidden=!cuadro;
+  document.getElementById('view-red').hidden=cuadro;
+  document.getElementById('tab-cuadro').classList.toggle('active',cuadro);
+  document.getElementById('tab-red').classList.toggle('active',!cuadro);
+  if(!cuadro){ Net.ensure(); Net.reheat(); }
+}
+document.getElementById('tab-cuadro').addEventListener('click',function(){ switchTab('cuadro'); });
+document.getElementById('tab-red').addEventListener('click',function(){ switchTab('red'); });
+
+/* Eventos delegados */
+document.addEventListener('click',function(ev){
+  const t=ev.target.closest('[data-act]');
+  if(!t)return;
+  const act=t.getAttribute('data-act');
+  if(act==='exitfocus'){ focusId=null; render(); return; }
+  if(act==='netfocus'){ if(focusId){ Net.select(focusId); switchTab('red'); } return; }
+  const row=t.closest('.row'); const id=row?row.getAttribute('data-id'):null;
+  if(act==='est'){ ev.stopPropagation(); if(canWrite===false)return; setEstado(id,t.getAttribute('data-est')); return; }
+  if(act==='focus'){ ev.stopPropagation(); focusId=(focusId===id?null:id); render(); if(focusId)window.scrollTo({top:0}); return; }
+  if(act==='net'){ ev.stopPropagation(); Net.select(id); switchTab('red'); window.scrollTo({top:0}); return; }
+  if(act==='dep'){ ev.stopPropagation(); const tok=t.getAttribute('data-tok'); if(byId.has(tok)){ focusId=tok; render(); window.scrollTo({top:0}); } else { filt.fase=faseOfToken(tok); document.getElementById('ffase').value=filt.fase; focusId=null; render(); } return; }
+  if(act==='toggle'&&id){ if(expanded.has(id))expanded.delete(id); else expanded.add(id); row.classList.toggle('open'); return; }
+});
+
+/* Filtros */
+const selF=document.getElementById('ffase');
+FASES.forEach(function(f){ const o=document.createElement('option'); o.value=f.id; o.textContent=f.id+' '+f.n; selF.appendChild(o); });
+selF.addEventListener('change',function(){ filt.fase=selF.value; focusId=null; render(); });
+document.getElementById('ftipo').addEventListener('change',function(e){ filt.tipo=e.target.value; focusId=null; render(); });
+document.getElementById('fest').addEventListener('change',function(e){ filt.est=e.target.value; focusId=null; render(); });
+document.getElementById('fq').addEventListener('input',function(e){ filt.q=e.target.value.trim(); focusId=null; render(); });
+document.getElementById('fclear').addEventListener('click',function(){
+  filt.fase='all';filt.tipo='all';filt.est='all';filt.q='';focusId=null;
+  selF.value='all';document.getElementById('ftipo').value='all';document.getElementById('fest').value='all';document.getElementById('fq').value='';
+  render();
+});
+
+function banner(msg){ const b=document.getElementById('banner'); b.textContent=msg; b.classList.add('show'); }
+
+/* Avance compartido */
+let writing=false;
+async function setEstado(id,s){
+  if(est(id)===s||writing)return;
+  const prev=estados[id];
+  estados[id]=s; render();
+  if(!dbRef)return;
+  writing=true;
+  try{
+    const r=await dbRef.from(TABLA).upsert({id:id,e:s,t:Date.now()});
+    if(r.error)throw r.error;
+  }catch(err){
+    if(err&&err.code==='invalid_argument'){ canWrite=false; banner('Tu nivel de acceso en este tablero es de solo lectura, el avance no se puede editar desde esta vista.'); }
+    else banner('No se pudo guardar el cambio de estado, probá de nuevo en un momento.');
+    estados[id]=prev; render();
+  }finally{ writing=false; }
+}
+
+/* ===== Red de dependencias ===== */
+const Net=(function(){
+  const HUBS=['CP0','CP1','CP2','CP3','CP4','CP5','VC','TX'];
+  const HUB_FASE={CP0:'F0',CP1:'F1',CP2:'F2',CP3:'F3',CP4:'F4',CP5:'F5',VC:'VC',TX:'TX'};
+  const FASE_HUB={F0:'CP0',F1:'CP1',F2:'CP2',F3:'CP3',F4:'CP4',F5:'CP5',VC:'VC',TX:'TX'};
+  let nodes=[], nmap={}, edges=[], built=false;
+  let canvas=null, ctx=null, W=0, H=0, dpr=1;
+  let alpha=0, selected=null, hover=null, dragging=null, downPt=null, moved=false, raf=0;
+  let selUp=new Set(), selDown=new Set(), selEdgesOn=new Set();
+  const reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function build(){
+    if(built)return; built=true;
+    canvas=document.getElementById('net'); ctx=canvas.getContext('2d');
+    nodes=[]; nmap={};
+    HUBS.forEach(function(h){
+      const n={id:h,hub:true,fase:HUB_FASE[h],x:0,y:0,vx:0,vy:0,r:17};
+      nodes.push(n); nmap[h]=n;
+    });
+    D.forEach(function(r){
+      const ds=downstream(r.id).size;
+      const n={id:r.id,hub:false,fase:r.f,x:0,y:0,vx:0,vy:0,r:5.5+Math.min(8.5,ds*0.22)};
+      nodes.push(n); nmap[r.id]=n;
+    });
+    edges=[];
+    D.forEach(function(r){
+      r.dep.forEach(function(t){
+        const src=byId.has(t)?t:(t==='VC'?'VC':'CP'+t.charAt(2));
+        edges.push({s:src,t:r.id});
+      });
+    });
+    size(true);
+    if('ResizeObserver' in window){ new ResizeObserver(function(){ size(false); reheat(); }).observe(document.getElementById('netwrap')); }
+    bindPointer();
+  }
+
+  function anchors(){
+    const padX=Math.max(50,W*0.06), topY=H*0.36, botY=H*0.8;
+    const span=W-2*padX;
+    const a={};
+    ['F0','F1','F2','F3','F4','F5'].forEach(function(f,i){ a[f]={x:padX+span*i/5,y:topY}; });
+    a.VC={x:padX+span*0.3,y:botY};
+    a.TX={x:padX+span*0.82,y:botY};
+    return a;
+  }
+
+  function size(first){
+    const wrap=document.getElementById('netwrap');
+    const w=wrap.clientWidth||600;
+    const h=Math.max(380,Math.min(640,Math.round(window.innerHeight*0.66)));
+    dpr=Math.min(2,window.devicePixelRatio||1);
+    const oldW=W,oldH=H;
+    W=w; H=h;
+    canvas.width=Math.round(w*dpr); canvas.height=Math.round(h*dpr);
+    canvas.style.height=h+'px';
+    const a=anchors();
+    if(first){
+      nodes.forEach(function(n){
+        const p=a[n.fase];
+        if(n.hub){ n.x=p.x; n.y=p.y; }
+        else{ n.x=p.x+(Math.random()-0.5)*140; n.y=p.y+(Math.random()-0.5)*140; }
+      });
+    }else if(oldW>0){
+      nodes.forEach(function(n){ n.x*=W/oldW; n.y*=H/oldH; });
+    }
+  }
+
+  function tick(){
+    const a=anchors();
+    const N=nodes.length;
+    for(let i=0;i<N;i++){
+      const n=nodes[i];
+      const p=a[n.fase];
+      const g=n.hub?0.06:0.012;
+      n.vx+=(p.x-n.x)*g; n.vy+=(p.y-n.y)*g;
+    }
+    for(let i=0;i<N;i++){
+      for(let j=i+1;j<N;j++){
+        const m=nodes[i],o=nodes[j];
+        let dx=m.x-o.x, dy=m.y-o.y;
+        let d2=dx*dx+dy*dy;
+        if(d2<1){dx=(Math.random()-0.5);dy=(Math.random()-0.5);d2=1;}
+        if(d2>22000)continue;
+        const d=Math.sqrt(d2);
+        const f=900/d2*(m.hub||o.hub?1.8:1);
+        dx/=d; dy/=d;
+        m.vx+=dx*f; m.vy+=dy*f;
+        o.vx-=dx*f; o.vy-=dy*f;
+      }
+    }
+    edges.forEach(function(e){
+      const s=nmap[e.s], t=nmap[e.t];
+      const dx=t.x-s.x, dy=t.y-s.y;
+      const d=Math.max(1,Math.sqrt(dx*dx+dy*dy));
+      const rest=s.hub?80:62;
+      const f=(d-rest)*0.015;
+      const ux=dx/d, uy=dy/d;
+      s.vx+=ux*f; s.vy+=uy*f;
+      t.vx-=ux*f; t.vy-=uy*f;
+    });
+    nodes.forEach(function(n){
+      if(n===dragging)return;
+      n.vx*=0.84; n.vy*=0.84;
+      n.x+=n.vx*alpha; n.y+=n.vy*alpha;
+      const m=n.r+6;
+      if(n.x<m)n.x=m; if(n.x>W-m)n.x=W-m;
+      if(n.y<m+4)n.y=m+4; if(n.y>H-m)n.y=H-m;
+    });
+    alpha*=0.994;
+  }
+
+  function colEst(e){ return e==='cerrada'?'#2e9e68':(e==='en_curso'?'#f0b429':'#ffffff'); }
+
+  function draw(){
+    if(!ctx)return;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,W,H);
+    const hasSel=!!selected;
+    // hilos
+    edges.forEach(function(e){
+      const s=nmap[e.s], t=nmap[e.t];
+      const key=e.s+'>'+e.t;
+      let col='rgba(20,20,20,0.13)', wdt=1;
+      if(hasSel){
+        if(selEdgesOn.has(key+':up')){col='rgba(227,160,8,0.85)';wdt=1.8;}
+        else if(selEdgesOn.has(key+':down')){col='rgba(11,125,132,0.85)';wdt=1.8;}
+        else col='rgba(20,20,20,0.05)';
+      }
+      ctx.strokeStyle=col; ctx.lineWidth=wdt;
+      ctx.beginPath();
+      const mx=(s.x+t.x)/2+(s.y-t.y)*0.12, my=(s.y+t.y)/2+(t.x-s.x)*0.12;
+      ctx.moveTo(s.x,s.y); ctx.quadraticCurveTo(mx,my,t.x,t.y);
+      ctx.stroke();
+    });
+    // nodos
+    nodes.forEach(function(n){
+      let dimmed=false, ring=null;
+      if(hasSel){
+        if(n.id===selected)ring='#d93315';
+        else if(selUp.has(n.id))ring='#e3a008';
+        else if(selDown.has(n.id))ring='#0b7d84';
+        else if(!n.hub)dimmed=true;
+        else dimmed=true;
+      }
+      ctx.globalAlpha=dimmed?0.22:1;
+      if(n.hub){
+        const rows=D.filter(function(r){return r.f===n.fase});
+        const done=rows.filter(function(r){return est(r.id)==='cerrada'}).length;
+        ctx.beginPath(); ctx.arc(n.x,n.y,n.r,0,Math.PI*2);
+        ctx.fillStyle='#141414'; ctx.fill();
+        if(done>0){
+          ctx.beginPath(); ctx.arc(n.x,n.y,n.r+3.5,-Math.PI/2,-Math.PI/2+Math.PI*2*done/rows.length);
+          ctx.strokeStyle='#2e9e68'; ctx.lineWidth=2.5; ctx.stroke();
+        }
+        if(ring){ ctx.beginPath(); ctx.arc(n.x,n.y,n.r+6,0,Math.PI*2); ctx.strokeStyle=ring; ctx.lineWidth=2; ctx.stroke(); }
+        ctx.fillStyle='#ffffff'; ctx.font='600 10px "IBM Plex Mono",monospace';
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(n.id,n.x,n.y);
+      }else{
+        ctx.beginPath(); ctx.arc(n.x,n.y,n.r,0,Math.PI*2);
+        ctx.fillStyle=colEst(est(n.id)); ctx.fill();
+        ctx.strokeStyle=ring||((n===hover)?'#141414':'rgba(20,20,20,0.4)');
+        ctx.lineWidth=ring?2.5:1.2;
+        ctx.stroke();
+        if(n.r>=10||n===hover||n.id===selected){
+          ctx.fillStyle='#141414'; ctx.font='500 9px "IBM Plex Mono",monospace';
+          ctx.textAlign='center'; ctx.textBaseline='middle';
+          ctx.fillText(n.id,n.x,n.y-n.r-7);
+        }
+      }
+      ctx.globalAlpha=1;
+    });
+  }
+
+  function loop(){
+    tick(); draw();
+    if(alpha>0.02&&!document.getElementById('view-red').hidden){ raf=requestAnimationFrame(loop); }
+    else raf=0;
+  }
+  function reheat(){
+    if(!built)return;
+    alpha=1;
+    if(reduced){ for(let i=0;i<260;i++)tick(); alpha=0; draw(); return; }
+    if(!raf)raf=requestAnimationFrame(loop);
+  }
+
+  function computeSel(){
+    selUp=new Set(); selDown=new Set(); selEdgesOn=new Set();
+    if(!selected)return;
+    if(nmap[selected].hub){
+      const f=HUB_FASE[selected];
+      D.filter(function(r){return r.f===f}).forEach(function(r){ selDown.add(r.id); });
+      edges.forEach(function(e){ if(e.s===selected||selDown.has(e.t)&&e.s===selected)selEdgesOn.add(e.s+'>'+e.t+':down'); });
+      return;
+    }
+    selUp=upstream(selected); selDown=downstream(selected);
+    edges.forEach(function(e){
+      const sIn=function(x){ return x===selected||selUp.has(x)||(nmap[x].hub&&false); };
+      // arista upstream: ambos extremos dentro del conjunto requisito+seleccionada, o hub cuyo grupo es requisito
+      const sSet=function(x){ if(x===selected)return true; if(selUp.has(x))return true; if(nmap[x].hub){ const f=HUB_FASE[x]; return D.filter(function(r){return r.f===f}).every(function(r){return selUp.has(r.id)||r.id===selected;})||D.filter(function(r){return r.f===f}).some(function(r){return selUp.has(r.id);}); } return false; };
+      const dSet=function(x){ if(x===selected)return true; if(selDown.has(x))return true; if(nmap[x].hub){ const f=HUB_FASE[x]; return D.filter(function(r){return r.f===f}).some(function(r){return selDown.has(r.id)||r.id===selected;}); } return false; };
+      if(sSet(e.s)&&(e.t===selected||selUp.has(e.t)))selEdgesOn.add(e.s+'>'+e.t+':up');
+      else if((e.s===selected||selDown.has(e.s)||dSet(e.s))&&selDown.has(e.t))selEdgesOn.add(e.s+'>'+e.t+':down');
+    });
+  }
+
+  function select(id){
+    build();
+    selected=id; computeSel(); info(); draw();
+  }
+
+  function info(){
+    const box=document.getElementById('netinfo');
+    if(!selected){ box.className=''; box.innerHTML=''; return; }
+    box.className='show';
+    if(nmap[selected].hub){
+      const f=FASES.find(function(x){return x.id===HUB_FASE[selected]});
+      const rows=D.filter(function(r){return r.f===f.id});
+      const done=rows.filter(function(r){return est(r.id)==='cerrada'}).length;
+      box.innerHTML='<span class="nid">'+selected+'</span><span class="nt">'+esc(f.n)+'</span>'
+        +'<p>'+esc(f.d)+'. Agrupa '+rows.length+' correcciones, '+done+' cerradas.</p>'
+        +'<div class="nbtns"><button class="primary" data-net="cuadro-fase" data-fase="'+f.id+'">Ver la fase en el cuadro</button><button data-net="clear">Quitar selección</button></div>';
+    }else{
+      const r=byId.get(selected);
+      box.innerHTML='<span class="nid">'+r.id+'</span><span class="nt">'+esc(r.t)+'</span>'
+        +'<p>'+esc(r.d)+'</p>'
+        +'<p>Estado '+EST_LBL[est(r.id)].toLowerCase()+' · requiere '+upstream(r.id).size+' · desbloquea '+downstream(r.id).size+'</p>'
+        +'<div class="nbtns"><button class="primary" data-net="cuadro">Abrir en el cuadro</button><button data-net="clear">Quitar selección</button></div>';
+    }
+  }
+
+  document.getElementById('netinfo').addEventListener('click',function(ev){
+    const b=ev.target.closest('[data-net]'); if(!b)return;
+    const a=b.getAttribute('data-net');
+    if(a==='clear'){ selected=null; computeSel(); info(); draw(); return; }
+    if(a==='cuadro'){ focusId=selected; switchTab('cuadro'); render(); window.scrollTo({top:0}); return; }
+    if(a==='cuadro-fase'){ filt.fase=b.getAttribute('data-fase'); document.getElementById('ffase').value=filt.fase; focusId=null; switchTab('cuadro'); render(); window.scrollTo({top:0}); return; }
+  });
+
+  function pos(ev){
+    const rect=canvas.getBoundingClientRect();
+    return {x:ev.clientX-rect.left, y:ev.clientY-rect.top};
+  }
+  function nodeAt(p){
+    for(let i=nodes.length-1;i>=0;i--){
+      const n=nodes[i];
+      const dx=p.x-n.x, dy=p.y-n.y;
+      if(dx*dx+dy*dy<=(n.r+5)*(n.r+5))return n;
+    }
+    return null;
+  }
+  function bindPointer(){
+    const tip=document.getElementById('tooltip');
+    canvas.addEventListener('pointerdown',function(ev){
+      const p=pos(ev); const n=nodeAt(p);
+      downPt=p; moved=false;
+      if(n){ dragging=n; canvas.setPointerCapture(ev.pointerId); }
+    });
+    canvas.addEventListener('pointermove',function(ev){
+      const p=pos(ev);
+      if(dragging){
+        if(downPt&&(Math.abs(p.x-downPt.x)>4||Math.abs(p.y-downPt.y)>4))moved=true;
+        dragging.x=p.x; dragging.y=p.y; dragging.vx=0; dragging.vy=0;
+        if(!raf&&!reduced){alpha=Math.max(alpha,0.3); raf=requestAnimationFrame(loop);} else draw();
+        return;
+      }
+      const n=nodeAt(p);
+      if(n!==hover){ hover=n; draw(); }
+      if(n){
+        tip.style.display='block';
+        tip.style.left=Math.min(W-250,p.x+14)+'px';
+        tip.style.top=Math.max(4,p.y-10)+'px';
+        if(n.hub){
+          const f=FASES.find(function(x){return x.id===HUB_FASE[n.id]});
+          tip.innerHTML='<span class="tid">'+n.id+'</span> '+esc(f.n);
+        }else{
+          const r=byId.get(n.id);
+          tip.innerHTML='<span class="tid">'+r.id+'</span> '+esc(r.t)+'<br><span class="tst">'+EST_LBL[est(r.id)]+' · desbloquea '+downstream(r.id).size+'</span>';
+        }
+      }else tip.style.display='none';
+    });
+    canvas.addEventListener('pointerup',function(ev){
+      const p=pos(ev);
+      if(dragging&&!moved){
+        selected=(selected===dragging.id?null:dragging.id);
+        computeSel(); info();
+      }
+      dragging=null; draw();
+    });
+    canvas.addEventListener('pointerleave',function(){ hover=null; tip.style.display='none'; draw(); });
+  }
+
+  return {
+    ensure:build,
+    reheat:reheat,
+    draw:function(){ if(built)draw(); },
+    select:function(id){ select(id); }
+  };
+})();
+
+render();
+
+/* Solapa inicial por hash */
+if(location.hash==='#red'){ switchTab('red'); }
+
+/* Registro compartido de avance (Supabase, en tiempo real) */
+function cargarEstados(){
+  return dbRef.from(TABLA).select('id,e').then(function(r){
+    if(r.error)throw r.error;
+    const m={}; r.data.forEach(function(x){ if(typeof x.e==='string')m[x.id]=x.e; });
+    estados=m; render();
+  });
+}
+(async function(){
+  if(!window.supabase){
+    canWrite=false;
+    banner('El registro compartido de avance no está disponible en esta vista. El tablero se puede leer igual, con todos los estados en pendiente.');
+    render(); return;
+  }
+  dbRef=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+  try{ await cargarEstados(); }
+  catch(e){ banner('No se pudo leer el registro de avance, recargá la página para reintentar.'); return; }
+  dbRef.channel('camino').on('postgres_changes',{event:'*',schema:'public',table:TABLA},function(p){
+    const x=p.new&&p.new.id?p.new:null;
+    if(x&&typeof x.e==='string'){ estados[x.id]=x.e; render(); }
+    else if(p.old&&p.old.id){ delete estados[p.old.id]; render(); }
+  }).subscribe(function(st){
+    if(st==='CHANNEL_ERROR'||st==='TIMED_OUT')banner('Se perdió la conexión con el registro de avance, recargá la página para reconectar.');
+    if(st==='SUBSCRIBED')cargarEstados().catch(function(){});
+  });
+})();
+</script>
+
+</body></html>
